@@ -1,0 +1,60 @@
+import cv2
+import time
+
+cap = cv2.VideoCapture('gorev2.mp4') 
+object_detector = cv2.createBackgroundSubtractorMOG2()
+
+#gorev2.mp4 480*848 olması ve istenen yüzdelere göre ayarlanmıştır.
+target_x = 212
+target_y = 48
+target_width = 636
+target_height = 332
+
+rect_color = (0, 0, 255) #BGR olarak kırmızı
+
+while (True):
+    ret, frame = cap.read()
+    height, weight, _ = frame.shape
+
+    #Görevde istenen bölgeyi tayin ediyoruz.
+    #Hedef Vuruş Alanında iken kırmızı kutuya al Kilitlenme Dörtgeni yazdır
+
+    mask = object_detector.apply(frame)
+
+    #Hareket eden daireyi tespit edelim
+    contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    for contour in contours:
+        (x, y, w, h) = cv2.boundingRect(contour)
+        if target_x < x < target_width and target_y < y < target_height:
+            print("Frame'i" ,round((x/weight*100),2), "yatayda, yüzde" ,round((y/height*100),2), "dikeyde kapsayan hedef, Hedef Vuruş Alani'nda.")
+
+            start_time = time.perf_counter()
+            mission_sec = start_time - end_time
+
+            #Hedef Kilitlenme Diktörtgenini çizdir
+            cv2.rectangle(frame, (target_x, target_y), (target_width,  target_height), rect_color, 5)
+            cv2.putText(frame, "Av : Hedef Vurus Alani", (target_x +10, target_y + target_height-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, rect_color, 2)
+
+            # Kilitlenme Dörtgeni çizdir
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 3)
+            cv2.putText(frame, "Kilitlenme Dortgeni", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, rect_color, 2)
+
+
+            # Hedefe başarılı bir şekilde 5 saniye boyunca kitlenirse
+            if 5 <= mission_sec:
+                print("Hedefe kitlenme basarili.")
+                cap.release()
+                cv2.destroyAllWindows()
+                exit()
+                
+        else:
+            end_time = time.perf_counter()
+
+
+    cv2.imshow('output', frame)
+
+    if(cv2.waitKey(10) & 0xFF == ord('a')) :
+        break
+
+cap.release()
+cv2.destroyAllWindows()
